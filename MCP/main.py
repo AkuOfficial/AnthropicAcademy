@@ -25,7 +25,8 @@ assert api_key, "Error: GOOGLE_API_KEY cannot be empty. Update .env"
 
 
 async def main():
-    claude_service = GeminiService(model=model, api_key=api_key)
+    # claude_service = Claude(model=model)
+    gemini_service = GeminiService(model=model, api_key=api_key)
 
     server_scripts = sys.argv[1:]
     clients = {}
@@ -55,7 +56,8 @@ async def main():
         chat = CliChat(
             doc_client=doc_client,
             clients=clients,
-            claude_service=claude_service,
+            # claude_service=claude_service,
+            gemini_service=gemini_service,
         )
 
         cli = CliApp(chat)

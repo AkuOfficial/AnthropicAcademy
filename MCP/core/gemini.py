@@ -1,34 +1,43 @@
-import google.generativeai as genai
+from google.genai import Client
+from google.genai import types
 
 
 class GeminiService:
     def __init__(self, model: str, api_key: str):
-        genai.configure(api_key=api_key)
+        self.client = Client(api_key=api_key)
         self.model_name = model
-        # Inicjalizujemy model bez narzędzi na starcie
-        self.model = genai.GenerativeModel(model_name=self.model_name)
 
-    def add_user_message(self, messages: list, message):
-        messages.append({"role": "user", "parts": [message]})
-
-    def add_assistant_message(self, messages: list, message):
-        messages.append({"role": "model", "parts": [message]})
-
-    def text_from_message(self, response):
-        return response.text
-
-    def chat(self, messages, system=None, tools=None, **kwargs):
-        # Konwersja system promptu
-        model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=system
+    def chat(self, messages, system=None, tools=None):
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            tools=tools,
+            tool_config=types.ToolConfig(
+                function_calling_config=types.FunctionCallingConfig(mode=types.FunctionCallingConfigMode.AUTO)
+            ) if tools else None
         )
 
-        # Przekształcenie narzędzi MCP na format Gemini (jeśli używasz)
-        # UWAGA: Gemini wymaga innej definicji tools niż Anthropic
-        # Na początek przetestuj bez tools, żeby sprawdzić czy śmiga
+        return self.client.models.generate_content(
+            model=self.model_name,
+            contents=messages,
+            config=config
+        )
 
-        chat = model.start_chat(history=messages[:-1])
-        response = chat.send_message(messages[-1]["parts"][0])
+    def add_user_message(self, messages: list, content_input):
+        if isinstance(content_input, str):
+            parts = [types.Part(text=content_input)]
+        elif isinstance(content_input, list):
+            parts = content_input
+        else:
+            parts = [types.Part(text=str(content_input))]
 
-        return response
+        messages.append(types.Content(role="user", parts=parts))
+
+    def add_assistant_message(self, messages: list, response):
+        if response.candidates and response.candidates[0].content:
+            messages.append(response.candidates[0].content)
+
+    def text_from_message(self, response):
+        try:
+            return response.text
+        except:
+            return ""

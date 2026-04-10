@@ -1,20 +1,24 @@
-from typing import List, Tuple
+from typing import List, Tuple, Any
 from mcp.types import Prompt, PromptMessage
-from anthropic.types import MessageParam
+# from anthropic.types import MessageParam
 
 from MCP.core.chat import Chat
-from MCP.core.claude import Claude
+# from MCP.core.claude import Claude
+from MCP.core.gemini import GeminiService
 from MCP.mcp_client import MCPClient
+
+from google.genai import types
 
 
 class CliChat(Chat):
     def __init__(
-        self,
-        doc_client: MCPClient,
-        clients: dict[str, MCPClient],
-        claude_service: Claude,
+            self,
+            doc_client: MCPClient,
+            clients: dict[str, MCPClient],
+            # claude_service: Claude,
+            gemini_service: GeminiService,
     ):
-        super().__init__(clients=clients, claude_service=claude_service)
+        super().__init__(clients=clients, gemini_service=gemini_service)
 
         self.doc_client: MCPClient = doc_client
 
@@ -28,7 +32,7 @@ class CliChat(Chat):
         return await self.doc_client.read_resource(f"docs://documents/{doc_id}")
 
     async def get_prompt(
-        self, command: str, doc_id: str
+            self, command: str, doc_id: str
     ) -> list[PromptMessage]:
         return await self.doc_client.get_prompt(command, {"doc_id": doc_id})
 
@@ -59,7 +63,8 @@ class CliChat(Chat):
             command, {"doc_id": words[1]}
         )
 
-        self.messages += convert_prompt_messages_to_message_params(messages)
+        # self.messages += convert_prompt_messages_to_message_params(messages)
+        self.messages += convert_prompt_messages_to_gemini(messages)
         return True
 
     async def _process_query(self, query: str):
@@ -86,58 +91,83 @@ class CliChat(Chat):
         Don't refer to or mention the provided context in any way - just use it to inform your answer.
         """
 
-        self.messages.append({"role": "user", "content": prompt})
+        # self.messages.append({"role": "user", "content": prompt})
+        self.gemini_service.add_user_message(self.messages, prompt)
 
 
-def convert_prompt_message_to_message_param(
-    prompt_message: "PromptMessage",
-) -> MessageParam:
-    role = "user" if prompt_message.role == "user" else "assistant"
+# def convert_prompt_message_to_message_param(
+#     prompt_message: "PromptMessage",
+# ) -> MessageParam:
+#     role = "user" if prompt_message.role == "user" else "assistant"
+#
+#     content = prompt_message.content
+#
+#     # Check if content is a dict-like object with a "type" field
+#     if isinstance(content, dict) or hasattr(content, "__dict__"):
+#         content_type = (
+#             content.get("type", None)
+#             if isinstance(content, dict)
+#             else getattr(content, "type", None)
+#         )
+#         if content_type == "text":
+#             content_text = (
+#                 content.get("text", "")
+#                 if isinstance(content, dict)
+#                 else getattr(content, "text", "")
+#             )
+#             return {"role": role, "content": content_text}
+#
+#     if isinstance(content, list):
+#         text_blocks = []
+#         for item in content:
+#             # Check if item is a dict-like object with a "type" field
+#             if isinstance(item, dict) or hasattr(item, "__dict__"):
+#                 item_type = (
+#                     item.get("type", None)
+#                     if isinstance(item, dict)
+#                     else getattr(item, "type", None)
+#                 )
+#                 if item_type == "text":
+#                     item_text = (
+#                         item.get("text", "")
+#                         if isinstance(item, dict)
+#                         else getattr(item, "text", "")
+#                     )
+#                     text_blocks.append({"type": "text", "text": item_text})
+#
+#         if text_blocks:
+#             return {"role": role, "content": text_blocks}
+#
+#     return {"role": role, "content": ""}
+#
+#
+# def convert_prompt_messages_to_message_params(
+#     prompt_messages: List[PromptMessage],
+# ) -> List[MessageParam]:
+#     return [
+#         convert_prompt_message_to_message_param(msg) for msg in prompt_messages
+#     ]
+
+def convert_prompt_message_to_gemini(prompt_message: "PromptMessage") -> types.Content:
+    role = "user" if prompt_message.role == "user" else "model"
 
     content = prompt_message.content
+    parts = []
 
-    # Check if content is a dict-like object with a "type" field
     if isinstance(content, dict) or hasattr(content, "__dict__"):
-        content_type = (
-            content.get("type", None)
-            if isinstance(content, dict)
-            else getattr(content, "type", None)
-        )
-        if content_type == "text":
-            content_text = (
-                content.get("text", "")
-                if isinstance(content, dict)
-                else getattr(content, "text", "")
-            )
-            return {"role": role, "content": content_text}
+        text = content.get("text") if isinstance(content, dict) else getattr(content, "text", "")
+        parts.append(types.Part(text=text))
 
-    if isinstance(content, list):
-        text_blocks = []
+    elif isinstance(content, list):
         for item in content:
-            # Check if item is a dict-like object with a "type" field
-            if isinstance(item, dict) or hasattr(item, "__dict__"):
-                item_type = (
-                    item.get("type", None)
-                    if isinstance(item, dict)
-                    else getattr(item, "type", None)
-                )
-                if item_type == "text":
-                    item_text = (
-                        item.get("text", "")
-                        if isinstance(item, dict)
-                        else getattr(item, "text", "")
-                    )
-                    text_blocks.append({"type": "text", "text": item_text})
+            text = item.get("text") if isinstance(item, dict) else getattr(item, "text", "")
+            if text:
+                parts.append(types.Part(text=text))
+    else:
+        parts.append(types.Part(text=str(content)))
 
-        if text_blocks:
-            return {"role": role, "content": text_blocks}
-
-    return {"role": role, "content": ""}
+    return types.Content(role=role, parts=parts)
 
 
-def convert_prompt_messages_to_message_params(
-    prompt_messages: List[PromptMessage],
-) -> List[MessageParam]:
-    return [
-        convert_prompt_message_to_message_param(msg) for msg in prompt_messages
-    ]
+def convert_prompt_messages_to_gemini(prompt_messages: List["PromptMessage"]) -> List[types.Content]:
+    return [convert_prompt_message_to_gemini(msg) for msg in prompt_messages]
