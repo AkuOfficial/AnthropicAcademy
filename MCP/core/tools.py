@@ -1,7 +1,7 @@
 # import json
-# from typing import Optional, Literal, List, Any
+from typing import Optional, Literal, List, Any
 # from mcp.types import CallToolResult, Tool, TextContent
-# from MCP.mcp_client import MCPClient
+from MCP.mcp_client import MCPClient
 # from anthropic.types import Message, ToolResultBlockParam
 
 from google.genai import types
@@ -31,7 +31,8 @@ class ToolManager:
         # Iterujemy po częściach odpowiedzi w poszukiwaniu wywołań
         for part in response.candidates[0].content.parts:
             if fn := part.function_call:
-                mcp_tool_name = fn.name.replace("_", "-")
+                # mcp_tool_name = fn.name.replace("_", "-")
+                mcp_tool_name = fn.name
                 client = await cls._find_client_with_tool(list(clients.values()), mcp_tool_name)
 
                 try:
@@ -65,18 +66,18 @@ class ToolManager:
     #             for t in tool_models
     #         ]
     #     return tools
-    #
-    # @classmethod
-    # async def _find_client_with_tool(
-    #     cls, clients: list[MCPClient], tool_name: str
-    # ) -> Optional[MCPClient]:
-    #     """Finds the first client that has the specified tool."""
-    #     for client in clients:
-    #         tools = await client.list_tools()
-    #         tool = next((t for t in tools if t.name == tool_name), None)
-    #         if tool:
-    #             return client
-    #     return None
+
+    @classmethod
+    async def _find_client_with_tool(
+            cls, clients: list[MCPClient], tool_name: str
+    ) -> Optional[MCPClient]:
+        """Finds the first client that has the specified tool."""
+        for client in clients:
+            tools = await client.list_tools()
+            tool = next((t for t in tools if t.name == tool_name), None)
+            if tool:
+                return client
+        return None
     #
     # @classmethod
     # def _build_tool_result_part(

@@ -1,11 +1,11 @@
 # MCP Chat
 
-MCP Chat is a command-line interface application that enables interactive chat capabilities with AI models through the Anthropic API. The application supports document retrieval, command-based prompts, and extensible tool integrations via the MCP (Model Control Protocol) architecture.
+MCP Chat is a command-line interface application that enables interactive chat capabilities with AI models through the Gemini API. The application supports document retrieval, command-based prompts, and extensible tool integrations via the MCP (Model Control Protocol) architecture.
 
 ## Prerequisites
 
 - Python 3.9+
-- Anthropic API Key
+- Google API Key
 
 ## Setup
 
@@ -14,7 +14,7 @@ MCP Chat is a command-line interface application that enables interactive chat c
 1. Create or edit the `.env` file in the project root and verify that the following variables are set correctly:
 
 ```
-ANTHROPIC_API_KEY=""  # Enter your Anthropic API secret key
+GOOGLE_API_KEY=""  # Enter your Google AI API secret key
 ```
 
 ### Step 2: Install dependencies
@@ -45,7 +45,7 @@ uv pip install -e .
 4. Run the project
 
 ```bash
-uv run main.py
+uv run python -m MCP.main
 ```
 
 #### Option 2: Setup without uv
@@ -66,7 +66,7 @@ pip install anthropic python-dotenv prompt-toolkit "mcp[cli]==1.8.0"
 3. Run the project
 
 ```bash
-python main.py
+python -m MCP.main
 ```
 
 ## Usage
@@ -98,6 +98,12 @@ Commands will auto-complete when you press Tab.
 ### Adding New Documents
 
 Edit the `mcp_server.py` file to add new documents to the `docs` dictionary.
+
+### Inspecting the MCP server
+
+```bash
+mcp dev .\MCP\mcp_server.py
+```
 
 ### Implementing MCP Features
 
