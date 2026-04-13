@@ -102,7 +102,7 @@ Edit the `mcp_server.py` file to add new documents to the `docs` dictionary.
 ### Inspecting the MCP server
 
 ```bash
-mcp dev .\MCP\mcp_server.py
+uv run mcp dev .\MCP\mcp_server.py
 ```
 
 ### Implementing MCP Features

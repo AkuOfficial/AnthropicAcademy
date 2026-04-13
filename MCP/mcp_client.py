@@ -1,5 +1,7 @@
 import os
+import json
 import asyncio
+from pydantic import AnyUrl
 from typing import Optional, Any
 from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters, types
@@ -8,10 +10,10 @@ from mcp.client.stdio import stdio_client
 
 class MCPClient:
     def __init__(
-        self,
-        command: str,
-        args: list[str],
-        env: Optional[dict] = None,
+            self,
+            command: str,
+            args: list[str],
+            env: Optional[dict] = None,
     ):
         self._command = command
         self._args = args
@@ -43,13 +45,11 @@ class MCPClient:
 
     async def list_tools(self) -> list[types.Tool]:
         result = await self._session.list_tools()
-        print("1111111111111111111111111")
         return result.tools
 
     async def call_tool(
-        self, tool_name: str, tool_input: dict
+            self, tool_name: str, tool_input: dict
     ) -> types.CallToolResult | None:
-        print("22222222222222222222222")
         return await self.session().call_tool(tool_name, tool_input)
 
     async def list_prompts(self) -> list[types.Prompt]:
@@ -61,7 +61,15 @@ class MCPClient:
         return []
 
     async def read_resource(self, uri: str) -> Any:
-        # TODO: Read a resource, parse the contents and return it
+        result = await self.session().read_resource(AnyUrl(uri))
+        resource = result.contents[0]
+
+        if isinstance(resource, types.TextResourceContents):
+            if resource.mimeType == "application/json":
+                return json.loads(resource.text)
+
+            return resource.text
+
         return []
 
     async def cleanup(self):
@@ -82,9 +90,9 @@ async def main():
     server_path = os.path.join(current_dir, "mcp_server.py")
 
     async with MCPClient(
-        # If using Python without UV, update command to 'python' and remove "run" from args.
-        command="uv",
-        args=["run", server_path],
+            # If using Python without UV, update command to 'python' and remove "run" from args.
+            command="uv",
+            args=["run", server_path],
     ) as _client:
         result = await _client.list_tools()
         print(result)
